@@ -5,14 +5,8 @@ TagMe is a cloud-based photo management web application that uses AWS Rekognitio
 
 ---
 
-## DEMO
-
-https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
-
----
-
 ## 🧩 Table of Contents
-
+- [Demo](#demo)
 - [Features](#features)
 - [Architecture](#architecture)
 - [AWS Services Used](#aws-services-used)
@@ -21,6 +15,12 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 - [Security](#security)
 - [Cost](#cost)
 - [Future Development](#future-development)
+
+---
+
+## DEMO
+
+https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 
 ---
 
@@ -46,8 +46,8 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 7. **Frontend queries RDS to display tagged photos**
 
 ### Cloud Setup
-- All resources are contained in a VPC (us-east-1)
-- EC2 instance in public subnet (ports 80/22)
+- All resources are contained in a VPC 
+- EC2 instance in public subnet 
 - Lambda + RDS in private subnet
 - NAT Gateway enables private subnet access to S3/Rekognition
 
@@ -99,7 +99,7 @@ This application uses **Infrastructure as Code (IaC)** with AWS CloudFormation f
 
 ---
 
-## 💰 Cost
+## 💰 Cost Evaluation
 
 ### Estimated Monthly Cost (Post-Free Tier):
 
@@ -118,15 +118,3 @@ This application uses **Infrastructure as Code (IaC)** with AWS CloudFormation f
 
 Cost can be reduced using S3 archival tiers, Aurora Serverless, or private VPC endpoints.
 
----
-
-## 🌱 Future Development
-
-### Cloud Enhancements:
-- Integrate **CloudFront** for global content delivery
-- Use **AWS Cognito** for secure user authentication
-- Add **API Gateway** for better backend API management
-- Implement **VPC Endpoints** to reduce NAT costs
-
-### App Features:
-- **AI Assistant** (e.g.,
