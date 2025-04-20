@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" class="h-100">
+
+
+<head>
+    <title>TagMe - Dashboard</title>
+    <%- include('partials/head') %>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+    <%- include('partials/nav'); %>
+
+
+        <div class="bg-body-tertiary p-4">
+            <div class="d-flex">
+                <div class="flex-column flex-grow-1 px-5 mx-5">
+                    <h1 class="">My Images</h1>
+                    <p>
+
+                        <% if (user) { %>
+                            <p>Welcome, <%= user %>!</p>
+                            <% } else { %>
+                                <p>You are not logged in.</p>
+                                <% } %>
+                 
+                    </p>
+                </div>
+                
+               
+                <form class="flex-row mx-5 my-2">
+                    <div class="input-group mb-3 w-100">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="basic-addon3">Search Tags:</span>
+                        </div>
+                        <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3"
+                            name="tag">
+                        <button class="btn btn-primary" type="submit">Search</button>
+                    </div>
+                </form>
+            </div>
+            <div class="d-flex flex-wrap justify-content-center mx-3 p-5">
+
+                <form class="p-2 m-2 border border-dark rounded image-box" method="post" enctype="multipart/form-data">
+
+                    <div class="text-center m-auto p-3 mt-3">
+                        <h2>
+                            Add New Photo
+                        </h2>
+                        <div class="border-2">
+                            <label for="formFile" class="form-label"></label>
+                            <input class="form-control" type="file" id="formFile" name="image">
+                        </div>
+                        <button class="btn btn-primary py-3 mt-5" type="submit">Upload</button>
+
+                    </div>
+
+                </form>
+
+                <% 
+                console.log(photos.length);
+                for(let i=0; i < photos.length;) {
+                    let url = photos[i].url;
+                    let j = i;
+                    let tags = [];
+    
+                    while (j < photos.length && url === photos[j].url) {
+                        tags.push(photos[j].tag);
+                        j++;
+                    }
+                
+                     %>
+                    <div class="m-2 border border-dark rounded image-box overflow-hidden" id="image-box-<%- i %>">
+                        <div class="labels justify-content-center flex-column">
+                        <% 
+                        console.log(tags);
+
+                        for (let k =0; k < tags.length; k++){
+                        %> 
+                                <p class="text-light text-center fw-bold fs-3"><%=  tags[k] %></p>                                   
+                        <% } %> 
+                    </div>
+                    </div>
+                        <script>
+                            // Fetch the image from your server
+                            fetch('/image?src=<%- photos[i].url %>')
+                                
+                                .then(response => response.blob()) 
+                                .then(imageBlob => {
+                                    const imageUrl = URL.createObjectURL(imageBlob);
+                                    const imgElement = document.createElement('img');
+                                    imgElement.style.height = "100%";
+                                    imgElement.classList.add("rounded");
+                                    imgElement.classList.add("object-fit-cover");
+                                    imgElement.classList.add("w-100");
+                                    imgElement.src = imageUrl;
+                    
+                                    // Find the div container and append the image to it
+                                    const imageContainer = document.getElementById('image-box-<%- i %>');
+                                    imageContainer.appendChild(imgElement);
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching the image:', error);
+                                });
+                        </script>
+
+                    <p>   
+                <%
+                    i = j;
+                } %>
+            </p>
+                        </table>
+
+            </div>
+
+        </div>
+
+
+
+
+
+
+
+        <%- include('partials/footer'); %>
+            <script defer="" src="/docs/5.3/dist/js/bootstrap.bundle.min.js"
+                integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"></script>
+</body>
+
+</html>

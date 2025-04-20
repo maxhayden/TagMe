@@ -1,0 +1,543 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: cloudformation for TagMe Application
+
+Resources:
+  
+#####################
+##### NETWORKING ####
+#####################
+  
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} VPC
+  # Security groups
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow all incoming http and ssh
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow only messaging from frontend through port 8000
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !Ref PublicSubnetCIDR
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !Ref PrivateSubnet1CIDR
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !Ref PrivateSubnet2CIDR
+  # Internet gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Internet Gateway
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  # Routing for the public subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Public Subnet
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Public Route
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Public Subnet EIP
+  PublicNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt PublicElasticIp.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} NAT Gateway
+  # Routing for the private subnet 1
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Private Subnet 1
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Private Routes 1
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PublicNatGateway
+  # Routing for the private subnet 2
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Private Subnet 2
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Private Routes 2
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PublicNatGateway
+ 
+#####################
+##### FRONTEND ######
+#####################
+
+  # Frontend server
+  WebServer:
+    Type: AWS::EC2::Instance
+    DependsOn: RDS
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      UserData: !Base64
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            # Update the system
+            sudo yum update -y
+
+            # Install git, curl
+            sudo yum install -y git curl-minimal
+
+            # Download and install nvm: 
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+            # in lieu of restarting the shell
+            \. "$HOME/.nvm/nvm.sh"
+            
+            # Download and install Node.js
+            nvm install 18
+
+            #setup DB
+            sudo dnf install mariadb105 -y
+            mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p'${DB_PASS}' -e "
+            CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\`;
+            USE \`${DB_DATABASE}\`;
+            CREATE TABLE IF NOT EXISTS users (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              email VARCHAR(100) NOT NULL UNIQUE,
+              password_hash VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE photos (
+                photo_id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                url VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE TABLE tags (
+                tag_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL
+            );
+            CREATE TABLE photo_tags (
+                photo_id INT,
+                tag_id INT,
+                PRIMARY KEY (photo_id, tag_id),
+                FOREIGN KEY (photo_id) REFERENCES photos(photo_id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
+            );
+            "
+
+            # Clone the repo and install dependencies
+            git clone https://github.com/maxhayden/aws-transcription-tool.git
+            cd aws-transcription-tool
+            npm install
+            npm install express
+            npm install ejs
+            npm install dotenv
+            npm i @aws-sdk/client-s3
+            npm install multer
+            npm install mysql2
+            npm install express-session
+            npm install express-mysql-session
+            npm install bcrypt
+            npm install pm2 -g
+            cd webServer
+
+            # Add .env variables
+            echo "S3_INPUT=${S3_INPUT}" >> .env
+            echo "REGION=${REGION}" >> .env
+            echo "ACCESS_KEY=${ACCESS_KEY}" >> .env
+            echo "SECRET_KEY=${SECRET_KEY}" >> .env
+            echo "SESSION_TOKEN=${SESSION_TOKEN}" >> .env
+            echo "DB_HOST=${DB_HOST}" >> .env
+            echo "DB_USER=${DB_USER}" >> .env
+            echo "DB_PORT=${DB_PORT}" >> .env
+            echo "DB_PASS=${DB_PASS}" >> .env
+            echo "DB_DATABASE=${DB_DATABASE}" >> .env
+
+            # Start Server
+            pm2 start index.js
+          - S3_INPUT: !Sub '${InputS3BucketName}-${AWS::AccountId}'
+            REGION: !Sub '${AWS::Region}'
+            ACCESS_KEY: !Ref AccessKey
+            SECRET_KEY: !Ref AccessSecret
+            SESSION_TOKEN: !Ref SessionToken
+            DB_HOST: !GetAtt RDS.Endpoint.Address
+            DB_USER: admin
+            DB_PORT: 3306
+            DB_PASS: adminpassword
+            DB_DATABASE: !Sub '${DbName}-database'
+            
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} Frontend Webserver
+
+#####################
+###### BACKEND ######
+#####################
+
+  # Backend s3 input bucket
+  InputS3:
+    Type: AWS::S3::Bucket
+    DependsOn: ComputeLambdaPermission
+    Properties:
+      BucketName: !Sub '${InputS3BucketName}-${AWS::AccountId}'
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .jpg
+            Queue: !GetAtt SQS.Arn
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .jpeg
+            Queue: !GetAtt SQS.Arn
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .png
+            Queue: !GetAtt SQS.Arn
+  
+  SQS:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: !Sub '${AppName}-SQS'
+      VisibilityTimeout: 1000
+  SQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action: SQS:SendMessage
+            Resource: !GetAtt SQS.Arn
+      Queues:
+          - Ref: SQS
+  
+  SQSLambdaTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt SQS.Arn
+      FunctionName: !Ref ComputeLambdaFunction
+  
+  # backend lambda and trigger 
+  ComputeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ComputeLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub 'arn:aws:s3:::${InputS3BucketName}-${AWS::AccountId}'
+  ComputeLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref LambdaZipsBucket
+        S3Key: !Ref LambdaKey
+      Description: List Amazon S3 buckets in us-east-1.
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref BackendSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Role: !Ref LabRoleARN
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Timeout: 300 
+  # rds 
+  RDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DbName
+      AllocatedStorage: 20
+      DBInstanceClass: db.t4g.micro
+      Engine: mysql
+      MasterUsername: admin
+      MasterUserPassword: adminpassword
+      VPCSecurityGroups:
+        - !Ref BackendSecurityGroup
+      AvailabilityZone: us-east-1a
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MultiAZ: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AppName} RDS
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${AppName}-DBSubnetGroup'
+      DBSubnetGroupDescription: Subnet group for RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+#####################
+##### PARAMETERS ####
+#####################
+
+Parameters:
+
+  DbName:
+    Type: String
+    Default: TagMe-RDS
+
+  InputS3BucketName:
+    Type: String
+    Default: tagme-s3input
+  
+  LabRoleARN:
+    Type: String
+    Description: ARN of the existing Lab role
+    Default: arn:aws:iam::739948230429:role/LabRole
+
+  LatestAmiId:
+    Description: The latest Amazon Linux 2023 AMI from the Parameter Store
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t3.micro
+      - t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: prod
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.10.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.30.0/24
+
+  AccessKey:
+    Description: Access key of your aws account
+    Type: String
+    Default: YOUR-ACCESS-KEY-HERE
+
+  AccessSecret:
+    Description: Access Secret of your aws account
+    Type: String
+    Default: YOUR-SECRET-KEY-HERE
+
+  SessionToken:
+    Description: Session Token of your aws account
+    Type: String
+    Default: YOUR-SESSION-TOKEN-HERE
+
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: TagMe
+
+  LambdaZipsBucket:
+    Description: Bucket for the lambda function
+    Type: String
+    Default: YOUR-LAMBDA-BUCKET-HERE
+
+  LambdaKey:
+    Description: Bucket for the lambda function
+    Type: String
+    Default: lambda.zip
+
+
+#####################
+##### OUTPUTS #######
+#####################
+
+Outputs:
+
+  WebsiteURL:
+    Description: Public URL of the frontend web server
+    Value: !Sub "http://${WebServer.PublicDnsName}"
+
+  LambdaFunctionName:
+    Description: Name of the backend compute Lambda function
+    Value: !Ref ComputeLambdaFunction
+
+  LambdaFunctionARN:
+    Description: ARN of the backend compute Lambda function
+    Value: !GetAtt ComputeLambdaFunction.Arn
+
+  VPCId:
+    Description: ID of the created VPC
+    Value: !Ref VPC
+
+  PublicSubnetId:
+    Description: ID of the public subnet
+    Value: !Ref PublicSubnet
+
+  PrivateSubnet1Id:
+    Description: ID of private subnet 1 (AZ1)
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2Id:
+    Description: ID of private subnet 2 (AZ2)
+    Value: !Ref PrivateSubnet2
+
+  InputS3BucketName:
+    Description: Name of the S3 bucket for image uploads
+    Value: !Ref InputS3
+
+  RDSInstanceEndpoint:
+    Description: Endpoint address of the RDS MySQL instance
+    Value: !GetAtt RDS.Endpoint.Address
+
+  RDSInstancePort:
+    Description: Port of the RDS MySQL instance
+    Value: !GetAtt RDS.Endpoint.Port
+
+  NATGatewayId:
+    Description: ID of the created NAT Gateway
+    Value: !Ref PublicNatGateway
+
+  WebServerInstanceId:
+    Description: ID of the EC2 instance running the frontend
+    Value: !Ref WebServer

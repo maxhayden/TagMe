@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" class="h-100">
+
+
+<head>
+    <title>TagMe - Register</title>
+    <%- include('partials/head') %>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+    <%- include('partials/nav'); %>
+
+        <div class="d-flex align-items-center py-4 bg-body-tertiary h-75">
+            <main class="form-signin m-auto p-5 text-center w-25">
+                <form class="p-2" method="post">
+                    <h1 class="h3 mb-3 fw-normal">Create an account</h1>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="basic-addon1">Email:</span>
+                        <input type="email" class="form-control" name="email" placeholder="john@example.com" required>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="basic-addon1">Password:</span>
+                        <input type="password" class="form-control" name="password" placeholder="pass123!" required>
+                    </div>
+                    <% if (query.error) { %>
+                        <p class="text-danger fw-bold">Email already taken</p>
+                    <% } %>
+
+                    <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Register</button>
+                </form>
+                <a href="/login" class="text-center">Login</a>
+            </main>
+        </div>
+
+        <%- include('partials/footer'); %>
+            <script defer="" src="/docs/5.3/dist/js/bootstrap.bundle.min.js"
+                integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"></script>
+</body>
+
+</html>
