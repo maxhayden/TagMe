@@ -7,14 +7,13 @@ TagMe is a cloud-based photo management web application that uses AWS Rekognitio
 
 ## 🧩 Table of Contents
 - [Demo](#demo)
-- [Features](#features)
-- [Architecture](#architecture)
-- [AWS Services Used](#aws-services-used)
-- [Tech Stack](#tech-stack)
-- [Deployment](#deployment)
-- [Security](#security)
-- [Cost](#cost)
-- [Future Development](#future-development)
+- [Features](#Features)
+- [Architecture](#Architecture)
+- [AWS Services Used](#Aws-Services-Used)
+- [Tech Stack](#Tech-Stack)
+- [Deployment](#Deployment)
+- [Security](#Security)
+- [Cost](#Cost)
 
 ---
 
@@ -24,7 +23,7 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 
 ---
 
-## 🚀 Features
+## Features
 
 - Upload and tag images using AI (AWS Rekognition)
 - Search photos by tags
@@ -35,7 +34,7 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 1. **User uploads photo via EC2-hosted frontend**
 2. **Image is stored in S3**
@@ -53,7 +52,7 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 
 ---
 
-## ☁️ AWS Services Used
+## AWS Services Used
 
 | Category                 | Services Used                                |
 |--------------------------|-----------------------------------------------|
@@ -67,24 +66,28 @@ https://github.com/user-attachments/assets/786618ba-b1ee-4cec-a370-87de97bb95ef
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** HTML, CSS, JavaScript, Bootstrap
 - **Web Server:** Node.js (Express)
 - **Backend (Lambda):** Node.js with Rekognition API
 - **Database:** MySQL (via Amazon RDS)
+
+
+![Untitled](https://github.com/user-attachments/assets/03c54c3a-8f50-4ad3-acea-7315cb0a13c7)
+
 - **Deployment:** AWS CloudFormation (YAML IaC)
 - **Scripting:** Bash + Curl for EC2 provisioning
 
 ---
 
-## 📦 Deployment
+## Deployment
 
 This application uses **Infrastructure as Code (IaC)** with AWS CloudFormation for fully automated provisioning of all services and dependencies. Launching the stack builds the full cloud architecture in a single click.
 
 ---
 
-## 🔐 Security
+## Security
 
 - VPC with isolated public/private subnets
 - EC2 security groups restrict access to ports 80 (HTTP) and 22 (SSH)
@@ -99,7 +102,7 @@ This application uses **Infrastructure as Code (IaC)** with AWS CloudFormation f
 
 ---
 
-## 💰 Cost Evaluation
+## Cost Evaluation
 
 ### Estimated Monthly Cost (Post-Free Tier):
 
